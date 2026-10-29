@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>local-llm-rag</title>
+    <style>
+      body { font: 16px/1.5 system-ui, sans-serif; max-width: 46rem; margin: 2rem auto; padding: 0 1rem; }
+      form { display: flex; gap: 0.5rem; }
+      input { flex: 1; padding: 0.5rem; }
+      button { padding: 0.5rem 1rem; }
+      #answer { white-space: pre-wrap; margin-top: 1rem; }
+      #status { color: #666; margin-left: 0.5rem; }
+      .error { color: #b00020; }
+    </style>
+  </head>
+  <body>
+    <h1>local-llm-rag</h1>
+    <p>
+      <button id="ingest">Index ./docs</button>
+      <span id="status"></span>
+    </p>
+    <form id="ask">
+      <input id="question" maxlength="2000" placeholder="Ask about your documents" required />
+      <button type="submit">Ask</button>
+    </form>
+    <div id="answer"></div>
+    <script>
+      const answer = document.getElementById("answer");
+      const status = document.getElementById("status");
+
+      document.getElementById("ingest").addEventListener("click", async () => {
+        status.textContent = "Indexing...";
+        const res = await fetch("/v1/ingest", { method: "POST" });
+        const body = await res.json();
+        status.textContent = res.ok
+          ? `added ${body.added}, updated ${body.updated}, skipped ${body.skipped}, removed ${body.removed}`
+          : body.error.message;
+      });
+
+      document.getElementById("ask").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        answer.className = "";
+        answer.textContent = "";
+        const res = await fetch("/v1/ask", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ question: document.getElementById("question").value }),
+        });
+        if (!res.ok) {
+          answer.className = "error";
+          answer.textContent = (await res.json()).error.message;
+          return;
+        }
+        const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+        let buffer = "";
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += value;
+          const blocks = buffer.split("\n\n");
+          buffer = blocks.pop();
+          for (const block of blocks) {
+            const lines = block.split("\n");
+            const name = lines.find((l) => l.startsWith("event: "))?.slice(7);
+            const data = JSON.parse(lines.find((l) => l.startsWith("data: ")).slice(6));
+            if (name === "error") {
+              answer.className = "error";
+              answer.textContent += `\n${data.error.message}`;
+            } else if (data.token) {
+              answer.textContent += data.token;
+            }
+          }
+        }
+      });
+    </script>
+  </body>
+</html>
