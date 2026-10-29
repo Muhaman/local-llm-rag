@@ -104,9 +104,7 @@ async def test_healthz_ok(client: httpx.AsyncClient) -> None:
     assert response.json() == {"status": "ok"}
 
 
-async def test_healthz_is_503_when_ollama_is_down(
-    app: FastAPI, client: httpx.AsyncClient
-) -> None:
+async def test_healthz_is_503_when_ollama_is_down(app: FastAPI, client: httpx.AsyncClient) -> None:
     app.dependency_overrides[get_health] = lambda: FakeHealth(up=False)
 
     response = await client.get("/healthz")
