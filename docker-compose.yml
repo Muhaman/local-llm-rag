@@ -1,0 +1,44 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  ollama-pull:
+    image: ollama/ollama:latest
+    depends_on:
+      ollama:
+        condition: service_healthy
+    entrypoint:
+      - /bin/sh
+      - -c
+      - ollama pull "$${CHAT_MODEL}" && ollama pull "$${EMBED_MODEL}"
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      CHAT_MODEL: ${CHAT_MODEL:-qwen2.5:7b}
+      EMBED_MODEL: ${EMBED_MODEL:-nomic-embed-text}
+    restart: "no"
+
+  app:
+    build: .
+    depends_on:
+      ollama-pull:
+        condition: service_completed_successfully
+    ports:
+      - "8000:8000"
+    environment:
+      OLLAMA_URL: http://ollama:11434
+      CHAT_MODEL: ${CHAT_MODEL:-qwen2.5:7b}
+      EMBED_MODEL: ${EMBED_MODEL:-nomic-embed-text}
+    volumes:
+      - ./docs:/data/docs:ro
+      - index:/data
+
+volumes:
+  ollama:
+  index:
