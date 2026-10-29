@@ -56,7 +56,7 @@ def app(tmp_path: Path, store: VectorStore, chat: FakeChat) -> FastAPI:
 @pytest.fixture
 async def client(app: FastAPI) -> AsyncIterator[httpx.AsyncClient]:
     async with httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app), base_url="http://test"
+        transport=httpx.ASGITransport(app=app, raise_app_exceptions=False), base_url="http://test"
     ) as http:
         yield http
 
@@ -117,7 +117,7 @@ async def test_ingest_returns_report(client: httpx.AsyncClient) -> None:
     response = await client.post("/v1/ingest")
 
     assert response.status_code == 200
-    assert response.json() == {"added": 1, "updated": 0, "skipped": 0, "removed": 1}
+    assert response.json() == {"added": 1, "updated": 0, "skipped": 0, "removed": 1, "failed": 0}
 
 
 async def test_index_page_is_served(client: httpx.AsyncClient) -> None:
@@ -132,3 +132,17 @@ async def test_unknown_route_uses_error_shape(client: httpx.AsyncClient) -> None
 
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "not_found"
+
+
+async def test_unexpected_error_is_a_500_without_internals(
+    app: FastAPI, client: httpx.AsyncClient
+) -> None:
+    async def boom() -> None:
+        raise RuntimeError("secret detail")
+
+    app.add_api_route("/boom", boom)
+
+    response = await client.get("/boom")
+
+    assert response.status_code == 500
+    assert response.json() == {"error": {"code": "internal", "message": "Internal server error."}}

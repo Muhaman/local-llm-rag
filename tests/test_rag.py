@@ -28,6 +28,16 @@ async def test_empty_index_replies_without_calling_the_model(store: VectorStore)
     assert embedder.calls == []
 
 
+async def test_index_without_chunks_does_not_call_the_model(store: VectorStore) -> None:
+    store.upsert_document("blank.md", "h", [], [])
+    chat = FakeChat()
+
+    answer = await collect("anything?", store, chat)
+
+    assert answer == NO_DOCUMENTS_REPLY
+    assert chat.calls == []
+
+
 async def test_prompt_cites_sources_by_path(store: VectorStore) -> None:
     store.upsert_document("a.md", "h", ["Alpha facts"], [[1.0, 1.0, 0.0]])
     chat = FakeChat(tokens=["Answer ", "[a.md]"])

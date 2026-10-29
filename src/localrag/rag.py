@@ -28,11 +28,14 @@ async def ask(
     chat: ChatModel,
     top_k: int = 5,
 ) -> AsyncGenerator[str, None]:
-    if not store.list_paths():
+    if not store.has_chunks():
         yield NO_DOCUMENTS_REPLY
         return
     (embedding,) = await embedder.embed([question])
     hits = store.search(embedding, top_k)
+    if not hits:
+        yield NO_DOCUMENTS_REPLY
+        return
     async with aclosing(chat.stream(build_messages(question, hits))) as tokens:
         async for token in tokens:
             yield token

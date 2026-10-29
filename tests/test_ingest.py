@@ -61,3 +61,18 @@ async def test_missing_folder_does_not_wipe_the_index(
         await ingest_folder(tmp_path / "nope", store, FakeEmbedder())
 
     assert store.list_paths() == {"a.md", "sub/b.txt"}
+
+
+async def test_unreadable_file_is_counted_and_does_not_stop_the_run(
+    docs: Path, store: VectorStore
+) -> None:
+    (docs / "a.md").unlink()
+    (docs / "sub" / "b.txt").unlink()
+    (docs / "broken.pdf").write_bytes(b"not a pdf at all")
+    (docs / "good.md").write_text("# Good\nReadable.")
+
+    report = await ingest_folder(docs, store, FakeEmbedder())
+
+    assert report.added == 1
+    assert report.failed == 1
+    assert store.list_paths() == {"good.md"}

@@ -19,18 +19,24 @@ class IngestReport:
     updated: int
     skipped: int
     removed: int
+    failed: int = 0
 
 
 async def ingest_folder(folder: Path, store: VectorStore, embedder: Embedder) -> IngestReport:
     files = await asyncio.to_thread(_scan, folder)
-    added = updated = skipped = 0
+    added = updated = skipped = failed = 0
     for rel_path, path in files.items():
         digest = await asyncio.to_thread(_sha256, path)
         known = store.get_hash(rel_path)
         if known == digest:
             skipped += 1
             continue
-        text = await asyncio.to_thread(load_file, path)
+        try:
+            text = await asyncio.to_thread(load_file, path)
+        except Exception as exc:
+            failed += 1
+            log.warning("document_unreadable", path=rel_path, error=repr(exc))
+            continue
         chunks = chunk_text(text)
         embeddings = await embedder.embed(chunks) if chunks else []
         store.upsert_document(rel_path, digest, chunks, embeddings)
@@ -43,7 +49,9 @@ async def ingest_folder(folder: Path, store: VectorStore, embedder: Embedder) ->
     for rel_path in vanished:
         store.delete_document(rel_path)
         log.info("document_removed", path=rel_path)
-    return IngestReport(added=added, updated=updated, skipped=skipped, removed=len(vanished))
+    return IngestReport(
+        added=added, updated=updated, skipped=skipped, removed=len(vanished), failed=failed
+    )
 
 
 def _sha256(path: Path) -> str:

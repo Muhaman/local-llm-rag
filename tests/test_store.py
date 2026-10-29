@@ -60,3 +60,14 @@ def test_mismatched_chunk_and_embedding_counts_are_rejected(tmp_path: Path) -> N
 
     with pytest.raises(ValueError):
         store.upsert_document("a.md", "h", ["one", "two"], [[1.0, 0.0, 0.0]])
+
+
+def test_has_chunks(tmp_path: Path) -> None:
+    store = VectorStore(tmp_path / "h.db", dim=3)
+    assert not store.has_chunks()
+
+    store.upsert_document("blank.md", "h", [], [])
+    assert not store.has_chunks()
+
+    store.upsert_document("a.md", "h", ["alpha"], [[1.0, 0.0, 0.0]])
+    assert store.has_chunks()

@@ -46,6 +46,10 @@ class VectorStore:
             found = row.fetchone()
         return str(found[0]) if found else None
 
+    def has_chunks(self) -> bool:
+        with self._lock:
+            return self._conn.execute("SELECT 1 FROM chunks LIMIT 1").fetchone() is not None
+
     def list_paths(self) -> set[str]:
         with self._lock:
             rows = self._conn.execute("SELECT path FROM documents").fetchall()

@@ -68,6 +68,7 @@ class OllamaClient:
                         yield content
                     if chunk.get("done"):
                         return
+                raise OllamaError("Ollama stream ended before completion")
         except httpx.HTTPError as exc:
             raise OllamaError(f"Ollama request failed: {exc!r}") from exc
 

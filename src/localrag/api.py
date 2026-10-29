@@ -102,6 +102,11 @@ def create_app() -> FastAPI:
         code = "not_found" if exc.status_code == 404 else "http_error"
         return JSONResponse(error_body(code, str(exc.detail)), status_code=exc.status_code)
 
+    @app.exception_handler(Exception)
+    async def unhandled_handler(_request: Request, exc: Exception) -> JSONResponse:
+        log.error("unhandled_error", error=repr(exc))
+        return JSONResponse(error_body("internal", "Internal server error."), status_code=500)
+
     @app.get("/", include_in_schema=False)
     async def index() -> FileResponse:
         return FileResponse(INDEX_HTML, media_type="text/html")
