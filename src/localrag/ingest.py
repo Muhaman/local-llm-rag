@@ -22,13 +22,7 @@ class IngestReport:
 
 
 async def ingest_folder(folder: Path, store: VectorStore, embedder: Embedder) -> IngestReport:
-    if not folder.is_dir():
-        raise NotADirectoryError(f"Docs folder not found: {folder}")
-    files = {
-        path.relative_to(folder).as_posix(): path
-        for path in sorted(folder.rglob("*"))
-        if path.is_file() and is_supported(path)
-    }
+    files = await asyncio.to_thread(_scan, folder)
     added = updated = skipped = 0
     for rel_path, path in files.items():
         digest = await asyncio.to_thread(_sha256, path)
@@ -54,3 +48,13 @@ async def ingest_folder(folder: Path, store: VectorStore, embedder: Embedder) ->
 
 def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _scan(folder: Path) -> dict[str, Path]:
+    if not folder.is_dir():
+        raise NotADirectoryError(f"Docs folder not found: {folder}")
+    return {
+        path.relative_to(folder).as_posix(): path
+        for path in sorted(folder.rglob("*"))
+        if path.is_file() and is_supported(path)
+    }
