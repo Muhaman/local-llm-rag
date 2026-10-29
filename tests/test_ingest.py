@@ -1,8 +1,8 @@
 from pathlib import Path
 
 import pytest
-from fakes import FakeEmbedder
 
+from fakes import FakeEmbedder
 from localrag.ingest import IngestReport, ingest_folder
 from localrag.store import VectorStore
 

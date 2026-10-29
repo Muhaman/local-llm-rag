@@ -37,6 +37,9 @@ src = ["src", "tests"]
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "ASYNC"]
 
+[tool.ruff.lint.isort]
+known-first-party = ["fakes", "localrag"]
+
 [tool.mypy]
 strict = true
 plugins = ["pydantic.mypy"]

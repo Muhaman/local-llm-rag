@@ -4,9 +4,9 @@ from pathlib import Path
 
 import httpx
 import pytest
-from fakes import FakeChat, FakeEmbedder, FakeHealth
 from fastapi import FastAPI
 
+from fakes import FakeChat, FakeEmbedder, FakeHealth
 from localrag.api import create_app, get_chat, get_embedder, get_health, get_settings, get_store
 from localrag.config import Settings
 from localrag.ollama import OllamaError

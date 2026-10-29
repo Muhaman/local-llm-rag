@@ -1,8 +1,8 @@
 from pathlib import Path
 
 import pytest
-from fakes import FakeChat, FakeEmbedder
 
+from fakes import FakeChat, FakeEmbedder
 from localrag.rag import NO_DOCUMENTS_REPLY, ask
 from localrag.store import VectorStore
 
